@@ -28,7 +28,7 @@ def generate_numbers(level):
                 base[i], base[j] = base[j], base[i]
 
     elif level == "hard":
-        base = random.sample(range(1, 40), 20)
+        base = random.sample(range(1, 40), 24)
         random.shuffle(base)
         for _ in range(len(base)):
             i = random.randint(0, len(base)-2)
