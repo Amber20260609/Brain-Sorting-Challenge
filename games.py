@@ -3,17 +3,10 @@ import random
 import time
 import math
 
-# HOW TO RUN: python -m streamlit run games.py
-# Make sure image1.png is in the same folder!
-
 st.set_page_config(page_title="BrainSort Challenge", layout="centered")
-
-# ================================================================
 # SESSION STATE SETUP
-# ================================================================
 if "page" not in st.session_state:
     st.session_state.page = "home"
-
 if "merge_level" not in st.session_state:
     st.session_state.merge_level = 1
 if "merge_completed" not in st.session_state:
@@ -38,8 +31,6 @@ if "merge_current_left" not in st.session_state:
     st.session_state.merge_current_left = []
 if "merge_current_right" not in st.session_state:
     st.session_state.merge_current_right = []
-if "merge_current_merged" not in st.session_state:
-    st.session_state.merge_current_merged = []
 if "merge_merged_results" not in st.session_state:
     st.session_state.merge_merged_results = []
 if "merge_timer_started" not in st.session_state:
@@ -56,19 +47,26 @@ if "merge_available" not in st.session_state:
     st.session_state.merge_available = []
 if "merge_player_order" not in st.session_state:
     st.session_state.merge_player_order = []
-
-
-# ================================================================
+if "merge_personal_best" not in st.session_state:
+    st.session_state.merge_personal_best = {}
+# Challenge mode split state
+if "challenge_current_groups" not in st.session_state:
+    st.session_state.challenge_current_groups = []
+if "challenge_split_complete" not in st.session_state:
+    st.session_state.challenge_split_complete = False
+if "challenge_merge_groups" not in st.session_state:
+    st.session_state.challenge_merge_groups = []
+if "challenge_merge_idx" not in st.session_state:
+    st.session_state.challenge_merge_idx = 0
+if "challenge_player_pick" not in st.session_state:
+    st.session_state.challenge_player_pick = []
+if "challenge_available" not in st.session_state:
+    st.session_state.challenge_available = []
 # NAVIGATION
-# ================================================================
 def go_to_page(page_name):
     st.session_state.page = page_name
     st.rerun()
-
-
-# ================================================================
 # SHARED: Gradient background
-# ================================================================
 def show_gradient_background():
     st.markdown("""
     <style>
@@ -84,14 +82,9 @@ def show_gradient_background():
         }
     </style>
     """, unsafe_allow_html=True)
-
-
-# ================================================================
 # BUBBLE SORT: Generate numbers
-# ================================================================
 def make_numbers(level):
     numbers = []
-
     if level == "easy":
         numbers = random.sample(range(1, 20), 6)
         numbers.sort()
@@ -101,7 +94,6 @@ def make_numbers(level):
             numbers[i] = numbers[i + 1]
             numbers[i + 1] = temp
             i = i + 2
-
     if level == "medium":
         numbers = random.sample(range(1, 30), 12)
         numbers.sort()
@@ -112,7 +104,6 @@ def make_numbers(level):
                 temp = numbers[i]
                 numbers[i] = numbers[j]
                 numbers[j] = temp
-
     if level == "hard":
         numbers = random.sample(range(1, 40), 20)
         random.shuffle(numbers)
@@ -125,24 +116,18 @@ def make_numbers(level):
                 numbers[i] = numbers[i + 1]
                 numbers[i + 1] = temp
             count = count + 1
-
     return numbers
-
-
-# ================================================================
 # MERGE SORT: Helper functions
-# ================================================================
-
 MERGE_LEVELS = {
-    1: 4,  2: 6,  3: 8,  4: 10, 5: 12,
-    6: 14, 7: 16, 8: 18, 9: 20, 10: 24
+    1: 4,  2: 6,  3: 8,  4: 10,
+    5: 12, 6: 14, 7: 16, 8: 18, 9: 20, 10: 24
 }
-
 def get_level_mode(level):
+    # 1-2: tutorial, 3-4: guided, 5-10: challenge
     if level <= 2:
         return "tutorial"
-    elif level <= 5:
-        return "semi"
+    elif level <= 4:
+        return "guided"
     else:
         return "challenge"
 
@@ -150,8 +135,8 @@ def get_level_badge(level):
     mode = get_level_mode(level)
     if mode == "tutorial":
         return "🎓 TUTORIAL"
-    elif mode == "semi":
-        return "⚔️ SEMI-CHALLENGE"
+    elif mode == "guided":
+        return "📖 GUIDED"
     else:
         return "🔥 CHALLENGE"
 
@@ -161,15 +146,13 @@ def generate_merge_numbers(level):
     return nums
 
 def calc_splits(arr):
-    # Make sure we work with a clean list of integers
+    # Pre-calculate all split levels safely
     arr = [int(x) for x in list(arr)]
     levels = [arr]
     current = [arr]
-
     while any(len(g) > 1 for g in current):
         next_level = []
         for g in current:
-            # Make sure g is always a list
             g = [int(x) for x in list(g)]
             if len(g) > 1:
                 mid = math.ceil(len(g) / 2)
@@ -179,11 +162,9 @@ def calc_splits(arr):
                 next_level.append([int(x) for x in g])
         levels.append(next_level)
         current = next_level
-
     return levels
 
 def calc_merge_pairs(split_levels):
-    # Get pairs to merge from bottom of split tree
     singles = split_levels[-1]
     pairs = []
     i = 0
@@ -195,6 +176,7 @@ def calc_merge_pairs(split_levels):
     return pairs
 
 def get_merge_time():
+    # Stopwatch — counts up
     if not st.session_state.merge_timer_started:
         return 0
     elapsed = time.time() - st.session_state.merge_start_time
@@ -221,8 +203,9 @@ def start_merge_timer():
 
 def reset_merge_level(level):
     nums = generate_merge_numbers(level)
-    # Make sure nums is a clean list of ints
     nums = [int(x) for x in nums]
+
+    # For tutorial and guided — pre-calculate splits
     split_levels = calc_splits(nums)
     pairs = calc_merge_pairs(split_levels)
 
@@ -234,7 +217,6 @@ def reset_merge_level(level):
     st.session_state.merge_phase = "split"
     st.session_state.merge_current_left = []
     st.session_state.merge_current_right = []
-    st.session_state.merge_current_merged = []
     st.session_state.merge_merged_results = []
     st.session_state.merge_timer_started = False
     st.session_state.merge_start_time = 0
@@ -245,13 +227,16 @@ def reset_merge_level(level):
     st.session_state.merge_available = []
     st.session_state.merge_player_order = []
 
-
-# ================================================================
+    # Challenge mode state
+    st.session_state.challenge_current_groups = [nums[:]]  # start with full list as one group
+    st.session_state.challenge_split_complete = False
+    st.session_state.challenge_merge_groups = []
+    st.session_state.challenge_merge_idx = 0
+    st.session_state.challenge_player_pick = []
+    st.session_state.challenge_available = []
 # MERGE SORT: Code panel
-# ================================================================
 def show_merge_code_panel():
     active = st.session_state.merge_code_line
-
     all_lines = [
         "def merge_sort(arr):",
         "&nbsp;&nbsp;if len(arr) &lt;= 1:",
@@ -270,7 +255,6 @@ def show_merge_code_panel():
         "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;result.append(right.pop(0))",
         "&nbsp;&nbsp;return result + left + right",
     ]
-
     code_html = ""
     for idx, line in enumerate(all_lines):
         if idx == active:
@@ -279,40 +263,25 @@ def show_merge_code_panel():
             style = "color:rgba(255,255,255,0.35); padding:4px 8px; display:block;"
         code_html = code_html + '<span style="' + style + '">' + line + '</span>'
 
-    st.markdown("""
-        <p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:3px; text-align:center;'>THE CODE</p>
-        <div style="background:#1a1a2e; border-radius:14px; padding:16px; font-family:monospace; font-size:12px; line-height:1.9;">
-    """ + code_html + """</div>""", unsafe_allow_html=True)
-
-    st.markdown("""
-        <div style="margin-top:12px; background:rgba(255,208,0,0.85); border-left:3px solid #ffd000; border-radius:0 10px 10px 0; padding:10px 14px; color:black; font-size:13px; line-height:1.6;">
-        💡 """ + st.session_state.merge_explain + """</div>
-    """, unsafe_allow_html=True)
-
-
-# ================================================================
+    st.markdown('<p style="color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:3px; text-align:center;">THE CODE</p>', unsafe_allow_html=True)
+    st.markdown('<div style="background:#1a1a2e; border-radius:14px; padding:16px; font-family:monospace; font-size:12px; line-height:1.9;">' + code_html + '</div>', unsafe_allow_html=True)
+    st.markdown('<div style="margin-top:12px; background:rgba(255,208,0,0.85); border-left:3px solid #ffd000; border-radius:0 10px 10px 0; padding:10px 14px; color:black; font-size:13px; line-height:1.6;">💡 ' + st.session_state.merge_explain + '</div>', unsafe_allow_html=True)
 # MERGE SORT: Split tree display
-# ================================================================
 def show_split_tree():
     split_levels = st.session_state.merge_split_levels
     split_idx = st.session_state.merge_split_idx
     merged_results = st.session_state.merge_merged_results
-
     show_up_to = min(split_idx + 1, len(split_levels))
-
     tree_html = ""
 
     for lvl in range(show_up_to):
         groups = split_levels[lvl]
         tree_html += '<div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;">'
-
         for g in groups:
-            # SAFETY CHECK: make sure g is always a list
             if isinstance(g, int):
                 g = [g]
             else:
                 g = [int(x) for x in list(g)]
-
             tree_html += '<div style="display:flex; gap:3px;">'
             for num in g:
                 if lvl == 0:
@@ -323,21 +292,16 @@ def show_split_tree():
                     bg = "#ef4444"
                 else:
                     bg = "#3b82f6"
-
                 tree_html += f'<div style="width:36px; height:36px; border-radius:8px; background:{bg}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:white;">{num}</div>'
             tree_html += '</div>'
-
         tree_html += '</div>'
-
         if lvl < show_up_to - 1:
             tree_html += '<div style="text-align:center; color:rgba(255,255,255,0.4); font-size:16px; margin:2px 0;">↓</div>'
 
-    # Show merged results
     if merged_results:
         tree_html += '<div style="text-align:center; color:rgba(255,255,255,0.4); font-size:16px; margin:4px 0;">↓ merging...</div>'
         tree_html += '<div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">'
         for result in merged_results:
-            # Safety check
             if isinstance(result, int):
                 result = [result]
             else:
@@ -348,15 +312,102 @@ def show_split_tree():
             tree_html += '</div>'
         tree_html += '</div>'
 
-    st.markdown("""
-        <p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:3px; text-align:center;'>SPLIT TREE</p>
-        <div style="background:rgba(255,255,255,0.08); border-radius:14px; padding:16px; min-height:100px;">
-    """ + tree_html + """</div>""", unsafe_allow_html=True)
+    st.markdown('<p style="color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:3px; text-align:center;">SPLIT TREE</p>', unsafe_allow_html=True)
+    st.markdown('<div style="background:rgba(255,255,255,0.08); border-radius:14px; padding:16px; min-height:80px;">' + tree_html + '</div>', unsafe_allow_html=True)
+# MERGE SORT: Challenge mode — player splits manually
+def render_challenge_split():
+    level = st.session_state.merge_level
+    groups = st.session_state.challenge_current_groups
 
+    # Check if all groups are single elements
+    all_single = all(len(g) == 1 for g in groups)
 
-# ================================================================
+    if all_single:
+        # Ready to merge
+        st.markdown("""
+            <div style="background:rgba(0,200,83,0.15); border:1px solid #00c853; border-radius:10px; padding:12px; text-align:center; margin-bottom:12px;">
+                <p style="color:#00c853; font-weight:bold; margin:0;">✅ All split into single numbers! Now merge them back in sorted order.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("✅ Start Merging!", use_container_width=True):
+            # Build merge pairs from singles
+            singles = [[g[0]] for g in groups]
+            pairs = []
+            i = 0
+            while i < len(singles) - 1:
+                pairs.append([singles[i], singles[i + 1]])
+                i = i + 2
+
+            st.session_state.merge_pairs = pairs
+            st.session_state.merge_pair_idx = 0
+            st.session_state.merge_phase = "merge"
+            if pairs:
+                first_pair = pairs[0]
+                left_list = [int(x) for x in first_pair[0]]
+                right_list = [int(x) for x in first_pair[1]]
+                st.session_state.merge_current_left = left_list
+                st.session_state.merge_current_right = right_list
+                st.session_state.merge_available = left_list + right_list
+                random.shuffle(st.session_state.merge_available)
+                st.session_state.merge_player_order = []
+            st.rerun()
+        return
+
+    # Show current groups
+    st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:3px; text-align:center;'>CURRENT GROUPS — Click a number to split its group at that position</p>", unsafe_allow_html=True)
+
+    # Show each group with clickable numbers
+    for group_idx, group in enumerate(groups):
+        if len(group) <= 1:
+            # Single — show as orange (done)
+            card_html = '<div style="display:flex; gap:6px; justify-content:center; margin-bottom:8px;">'
+            for num in group:
+                card_html += f'<div style="width:44px; height:44px; border-radius:10px; background:#ff9800; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:white;">{num}</div>'
+            card_html += '</div>'
+            st.markdown(card_html, unsafe_allow_html=True)
+        else:
+            # Group that needs splitting — show as clickable buttons
+            st.markdown(f"<p style='color:rgba(255,255,255,0.5); font-size:11px; text-align:center;'>Group {group_idx + 1} — click where to split:</p>", unsafe_allow_html=True)
+
+            # Shuffle display for challenge mode
+            display_group = group[:]
+
+            cols = st.columns(len(display_group))
+            for num_idx, num in enumerate(display_group):
+                with cols[num_idx]:
+                    st.markdown(f'<div style="background:#7850ff; border-radius:8px; padding:8px; text-align:center; color:white; font-weight:700; font-size:14px; margin-bottom:4px;">{num}</div>', unsafe_allow_html=True)
+                    if st.button(f"Split here", key=f"split_g{group_idx}_n{num_idx}_{num}", use_container_width=True):
+                        # Split at this position
+                        mid = num_idx + 1
+                        left_part = display_group[:mid]
+                        right_part = display_group[mid:]
+
+                        # Check if split is correct (should be roughly half)
+                        correct_mid = math.ceil(len(display_group) / 2)
+                        is_correct = (mid == correct_mid)
+
+                        if is_correct:
+                            # Correct split!
+                            new_groups = []
+                            for i, g in enumerate(groups):
+                                if i == group_idx:
+                                    new_groups.append(left_part)
+                                    new_groups.append(right_part)
+                                else:
+                                    new_groups.append(g)
+                            st.session_state.challenge_current_groups = new_groups
+                            st.session_state.merge_explain = "Correct split! Keep splitting until every number is alone."
+                        else:
+                            # Wrong split point
+                            st.session_state.merge_hearts -= 1
+                            st.session_state.merge_penalty += 10
+                            st.session_state.merge_explain = f"Wrong split point! Split as close to the middle as possible. -1 heart, +10 seconds!"
+                        st.rerun()
+
+    # Show explanation
+    st.markdown('<div style="margin-top:12px; background:rgba(255,208,0,0.85); border-left:3px solid #ffd000; border-radius:0 10px 10px 0; padding:10px 14px; color:black; font-size:13px; line-height:1.6;">💡 ' + st.session_state.merge_explain + '</div>', unsafe_allow_html=True)
 # MERGE SORT: Home page
-# ================================================================
 def render_merge_home():
     show_gradient_background()
 
@@ -370,43 +421,23 @@ def render_merge_home():
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown("""
-            <div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;">
-                <p style="color:#ffd000; font-size:22px; font-weight:bold;">1</p>
-                <p style="color:white; font-size:14px;">Split the list into halves</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;"><p style="color:#ffd000; font-size:22px; font-weight:bold;">1</p><p style="color:white; font-size:14px;">Split the list into halves</p></div>', unsafe_allow_html=True)
     with col2:
-        st.markdown("""
-            <div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;">
-                <p style="color:#ffd000; font-size:22px; font-weight:bold;">2</p>
-                <p style="color:white; font-size:14px;">Split until single elements</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;"><p style="color:#ffd000; font-size:22px; font-weight:bold;">2</p><p style="color:white; font-size:14px;">Split until single elements</p></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown("""
-            <div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;">
-                <p style="color:#ffd000; font-size:22px; font-weight:bold;">3</p>
-                <p style="color:white; font-size:14px;">Compare and pick smallest</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;"><p style="color:#ffd000; font-size:22px; font-weight:bold;">3</p><p style="color:white; font-size:14px;">Compare and pick smallest</p></div>', unsafe_allow_html=True)
     with col4:
-        st.markdown("""
-            <div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;">
-                <p style="color:#ffd000; font-size:22px; font-weight:bold;">4</p>
-                <p style="color:white; font-size:14px;">Merge back in sorted order</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;"><p style="color:#ffd000; font-size:22px; font-weight:bold;">4</p><p style="color:white; font-size:14px;">Merge back in sorted order</p></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown("""
         <div style="background:rgba(255,255,255,0.08); border-radius:14px; padding:16px; margin-bottom:24px;">
             <p style="color:#ffd000; font-size:16px; font-weight:bold; margin:0 0 10px;">📋 Level Progression</p>
-            <p style="color:white; font-size:14px; margin:6px 0;">🎓 <strong>Levels 1-2</strong> — Tutorial: Full guidance, split tree, code highlights, no pressure</p>
-            <p style="color:white; font-size:14px; margin:6px 0;">⚔️ <strong>Levels 3-5</strong> — Semi-Challenge: Split tree shown, timer and hearts added</p>
-            <p style="color:white; font-size:14px; margin:6px 0;">🔥 <strong>Levels 6-10</strong> — Full Challenge: No split tree, timer and hearts, you are on your own!</p>
-            <p style="color:rgba(255,255,255,0.6); font-size:13px; margin:10px 0 0;">❤️ Wrong merge = lose a heart + 10 second penalty. Lose all hearts = level restart!</p>
+            <p style="color:white; font-size:14px; margin:6px 0;">🎓 <strong>Levels 1-2</strong> — Tutorial: SPLIT button works, code shown, hints, no timer, no hearts</p>
+            <p style="color:white; font-size:14px; margin:6px 0;">📖 <strong>Levels 3-4</strong> — Guided: SPLIT button works, code shown, stopwatch starts, hearts added</p>
+            <p style="color:white; font-size:14px; margin:6px 0;">🔥 <strong>Levels 5-10</strong> — Challenge: YOU split manually by choosing the midpoint, no hints, stopwatch, hearts, no undo!</p>
+            <p style="color:rgba(255,255,255,0.6); font-size:13px; margin:10px 0 0;">❤️ Wrong split or wrong merge = lose a heart + 10 second penalty added to your time!</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -423,7 +454,7 @@ def render_merge_home():
             btn_color = "#00c853"
         elif mode == "tutorial":
             btn_color = "#7850ff"
-        elif mode == "semi":
+        elif mode == "guided":
             btn_color = "#ff9800"
         else:
             btn_color = "#ff2020"
@@ -432,9 +463,13 @@ def render_merge_home():
         if completed:
             label = f"✅ {label}"
 
+        # Show personal best if exists
+        pb = st.session_state.merge_personal_best.get(level)
+        pb_text = f"Best: {format_time(pb)}" if pb else ""
+
         with cols[level - 1]:
             if unlocked:
-                st.markdown(f'<div style="background:{btn_color}; border-radius:10px; padding:10px 6px; text-align:center; color:white; font-size:12px; font-weight:700; margin-bottom:6px;">{label}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="background:{btn_color}; border-radius:10px; padding:8px 6px; text-align:center; color:white; font-size:12px; font-weight:700; margin-bottom:4px;">{label}<br><span style="font-size:10px; opacity:0.8;">{pb_text}</span></div>', unsafe_allow_html=True)
                 if st.button(get_level_badge(level), key=f"ml_{level}", use_container_width=True):
                     st.session_state.merge_level = level
                     reset_merge_level(level)
@@ -449,31 +484,27 @@ def render_merge_home():
     for level in range(6, 11):
         unlocked = level in st.session_state.merge_unlocked
         completed = level in st.session_state.merge_completed
-
         label = f"Lv {level}"
         if completed:
             label = f"✅ {label}"
+        pb = st.session_state.merge_personal_best.get(level)
+        pb_text = f"Best: {format_time(pb)}" if pb else ""
 
         with cols2[level - 6]:
             if unlocked:
-                st.markdown(f'<div style="background:#ff2020; border-radius:10px; padding:10px 6px; text-align:center; color:white; font-size:12px; font-weight:700; margin-bottom:6px;">{label}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="background:#ff2020; border-radius:10px; padding:8px 6px; text-align:center; color:white; font-size:12px; font-weight:700; margin-bottom:4px;">{label}<br><span style="font-size:10px; opacity:0.8;">{pb_text}</span></div>', unsafe_allow_html=True)
                 if st.button("🔥 CHALLENGE", key=f"ml_{level}", use_container_width=True):
                     st.session_state.merge_level = level
                     reset_merge_level(level)
                     go_to_page("merge_game")
             else:
                 st.markdown(f'<div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:10px 6px; text-align:center; color:rgba(255,255,255,0.3); font-size:12px; font-weight:700; margin-bottom:6px;">🔒 Lv {level}</div>', unsafe_allow_html=True)
-
-
-# ================================================================
 # MERGE SORT: Game page
-# ================================================================
 def render_merge_game():
     level = st.session_state.merge_level
     mode = get_level_mode(level)
     show_gradient_background()
 
-    # Initialize if empty
     if not st.session_state.merge_numbers:
         reset_merge_level(level)
 
@@ -485,12 +516,13 @@ def render_merge_game():
             go_to_page("merge")
 
     with col2:
-        if mode in ["semi", "challenge"]:
+        if mode in ["guided", "challenge"]:
+            # Stopwatch display
             current_time = get_merge_time()
             st.markdown(f"""
                 <div style="text-align:center; background:rgba(0,0,0,0.3); border-radius:12px; padding:8px; border:2px solid #ffd000;">
                     <span style="color:#ffd000; font-size:22px; font-weight:800;">⏱ {format_time(current_time)}</span>
-                    <br><span style="color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:2px;">TIME</span>
+                    <br><span style="color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:2px;">YOUR TIME</span>
                 </div>
             """, unsafe_allow_html=True)
         else:
@@ -501,7 +533,7 @@ def render_merge_game():
             """, unsafe_allow_html=True)
 
     with col3:
-        if mode in ["semi", "challenge"]:
+        if mode in ["guided", "challenge"]:
             hearts = "❤️" * st.session_state.merge_hearts
             st.markdown(f"<div style='text-align:center; font-size:20px; padding-top:8px;'>{hearts}</div>", unsafe_allow_html=True)
 
@@ -509,7 +541,7 @@ def render_merge_game():
     st.markdown(f"<h2 style='text-align:center; color:white;'>Merge Sort — Level {level}</h2>", unsafe_allow_html=True)
 
     # --- Game over ---
-    if mode in ["semi", "challenge"] and st.session_state.merge_hearts <= 0:
+    if mode in ["guided", "challenge"] and st.session_state.merge_hearts <= 0:
         st.markdown("""
             <div style="background:rgba(255,32,32,0.3); border:2px solid #ff2020; border-radius:14px; padding:30px; text-align:center; margin:20px 0;">
                 <p style="color:white; font-size:32px; font-weight:800; margin:0;">💀 GAME OVER</p>
@@ -525,240 +557,195 @@ def render_merge_game():
             if st.button("🏠 Back to Levels", use_container_width=True):
                 go_to_page("merge")
         return
+    # CHALLENGE MODE (levels 5-10): Player does everything manually
+    if mode == "challenge":
 
-    # ---- SPLIT PHASE ----
-    if st.session_state.merge_phase == "split":
+        # Start timer automatically
+        start_merge_timer()
 
+        if st.session_state.merge_phase == "split":
+            st.markdown("""
+                <div style="background:rgba(255,32,32,0.15); border:1px solid #ff2020; border-radius:10px; padding:12px; text-align:center; margin-bottom:16px;">
+                    <p style="color:#ff2020; font-weight:bold; font-size:13px; margin:0;">🔥 CHALLENGE MODE — Split the numbers yourself! Click where to divide each group.</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            render_challenge_split()
+
+        elif st.session_state.merge_phase == "merge":
+            render_challenge_merge(level)
+    # TUTORIAL & GUIDED MODE (levels 1-4): SPLIT button works
+    else:
         split_levels = st.session_state.merge_split_levels
         split_idx = st.session_state.merge_split_idx
 
-        # Show split tree for tutorial and semi
-        if mode in ["tutorial", "semi"]:
+        # ---- SPLIT PHASE ----
+        if st.session_state.merge_phase == "split":
+
             show_split_tree()
             st.markdown("<br>", unsafe_allow_html=True)
 
-        if split_idx < len(split_levels) - 1:
+            if split_idx < len(split_levels) - 1:
 
-            # Show numbers for challenge mode
-            if mode == "challenge":
-                st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:3px; text-align:center;'>YOUR NUMBERS</p>", unsafe_allow_html=True)
-                nums = st.session_state.merge_numbers
-                cards_html = '<div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:16px;">'
-                for num in nums:
-                    cards_html += f'<div style="width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:white; background:#7850ff;">{num}</div>'
-                cards_html += '</div>'
-                st.markdown(cards_html, unsafe_allow_html=True)
+                left_col, right_col = st.columns(2)
 
-            left_col, right_col = st.columns(2)
+                with left_col:
+                    if mode == "tutorial":
+                        st.markdown('<div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:12px; margin-bottom:12px;"><p style="color:white; font-size:13px; margin:0;">👆 Press <strong>Split</strong> to divide the list in half. Keep splitting until every number is alone!</p></div>', unsafe_allow_html=True)
 
-            with left_col:
-                if mode == "tutorial":
-                    st.markdown("""
-                        <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:12px; margin-bottom:12px;">
-                            <p style="color:white; font-size:13px; margin:0;">👆 Press <strong>Split</strong> to divide the list in half. Keep splitting until every number is alone!</p>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    if st.button("🔀 SPLIT", use_container_width=True):
+                        if mode == "guided":
+                            start_merge_timer()
 
-                if st.button("🔀 SPLIT", use_container_width=True):
-                    if mode in ["semi", "challenge"]:
-                        start_merge_timer()
+                        st.session_state.merge_split_idx += 1
+                        new_idx = st.session_state.merge_split_idx
+                        groups = split_levels[new_idx]
+                        all_single = all(len(list(g)) == 1 for g in groups)
 
-                    st.session_state.merge_split_idx += 1
-                    new_idx = st.session_state.merge_split_idx
-                    groups = split_levels[new_idx]
-                    all_single = all(len(list(g)) == 1 for g in groups)
-
-                    if all_single:
-                        st.session_state.merge_code_line = 1
-                        st.session_state.merge_explain = "Every number is now alone — a single number is already sorted! Now we merge them back together in order."
-                    else:
-                        st.session_state.merge_code_line = 3
-                        st.session_state.merge_explain = "Split! The list is divided in half. We keep splitting until every piece has just one number."
-                    st.rerun()
-
-            with right_col:
-                if mode == "tutorial":
-                    show_merge_code_panel()
-
-        else:
-            # All split — ready to merge
-            st.session_state.merge_code_line = 8
-            st.session_state.merge_explain = "All numbers are alone! Now we start merging. Pick the smallest number from each pair to build the sorted list."
-
-            left_col, right_col = st.columns(2)
-
-            with left_col:
-                if mode == "tutorial":
-                    st.markdown("""
-                        <div style="background:rgba(0,200,83,0.15); border:1px solid #00c853; border-radius:10px; padding:12px; margin-bottom:12px;">
-                            <p style="color:#00c853; font-size:13px; margin:0;">✅ All split! Now press <strong>Start Merging</strong> to put them back together in sorted order.</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-                if st.button("✅ Start Merging!", use_container_width=True):
-                    st.session_state.merge_phase = "merge"
-                    pairs = st.session_state.merge_pairs
-                    if pairs:
-                        first_pair = pairs[0]
-                        left_list = sorted([int(x) for x in list(first_pair[0])])
-                        right_list = sorted([int(x) for x in list(first_pair[1])])
-                        st.session_state.merge_current_left = left_list
-                        st.session_state.merge_current_right = right_list
-                        st.session_state.merge_current_merged = []
-                        st.session_state.merge_available = sorted(left_list + right_list)
-                        st.session_state.merge_player_order = []
-                        st.session_state.merge_code_line = 10
-                        st.session_state.merge_explain = "Pick the smallest number from the left or right list to add to your merged result!"
-                    st.rerun()
-
-            with right_col:
-                if mode == "tutorial":
-                    show_merge_code_panel()
-
-    # ---- MERGE PHASE ----
-    elif st.session_state.merge_phase == "merge":
-
-        pair_idx = st.session_state.merge_pair_idx
-        pairs = st.session_state.merge_pairs
-        merged_results = st.session_state.merge_merged_results
-
-        if mode in ["tutorial", "semi"]:
-            show_split_tree()
-            st.markdown("<br>", unsafe_allow_html=True)
-
-        # Check if all pairs merged = level complete
-        if pair_idx >= len(pairs):
-            total_time = format_time(get_merge_time())
-
-            if level not in st.session_state.merge_completed:
-                st.session_state.merge_completed.append(level)
-            next_level = level + 1
-            if next_level <= 10 and next_level not in st.session_state.merge_unlocked:
-                st.session_state.merge_unlocked.append(next_level)
-
-            if level == 10:
-                st.markdown(f"""
-                    <div style="background:rgba(255,208,0,0.2); border:2px solid #ffd000; border-radius:14px; padding:30px; text-align:center; margin:20px 0;">
-                        <p style="color:#ffd000; font-size:36px; font-weight:800; margin:0;">🏆 MERGE SORT MASTER!</p>
-                        <p style="color:white; font-size:16px; margin:8px 0 0;">You completed all 10 levels in {total_time}!</p>
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                    <div style="background:rgba(0,200,83,0.2); border:2px solid #00c853; border-radius:14px; padding:24px; text-align:center; margin:20px 0;">
-                        <p style="color:#00c853; font-size:28px; font-weight:800; margin:0;">🎉 Level {level} Complete!</p>
-                        <p style="color:white; font-size:14px; margin:8px 0 0;">Time: {total_time} — Level {level + 1} unlocked!</p>
-                    </div>
-                """, unsafe_allow_html=True)
-
-            col1, col2 = st.columns(2)
-            with col1:
-                if level < 10:
-                    if st.button(f"➡ Level {level + 1}", use_container_width=True):
-                        st.session_state.merge_level = level + 1
-                        reset_merge_level(level + 1)
+                        if all_single:
+                            st.session_state.merge_code_line = 1
+                            st.session_state.merge_explain = "Every number is now alone — a single number is already sorted! Now we merge them back together."
+                        else:
+                            st.session_state.merge_code_line = 3
+                            st.session_state.merge_explain = "Split! Each group is divided in half. Keep splitting until every piece has just one number."
                         st.rerun()
-            with col2:
-                if st.button("🏠 Back to Levels", use_container_width=True):
-                    go_to_page("merge")
-            return
 
-        # Show current merge pair
-        left = [int(x) for x in list(st.session_state.merge_current_left)]
-        right = [int(x) for x in list(st.session_state.merge_current_right)]
-        player_order = st.session_state.merge_player_order
-        available = [int(x) for x in list(st.session_state.merge_available)]
+                with right_col:
+                    show_merge_code_panel()
 
-        st.markdown(f"<p style='text-align:center; color:white; letter-spacing:3px; font-size:11px;'>MERGING PAIR {pair_idx + 1} OF {len(pairs)}</p>", unsafe_allow_html=True)
+            else:
+                # All split — ready to merge
+                left_col, right_col = st.columns(2)
 
-        left_col, right_col = st.columns(2)
+                with left_col:
+                    if mode == "tutorial":
+                        st.markdown('<div style="background:rgba(0,200,83,0.15); border:1px solid #00c853; border-radius:10px; padding:12px; margin-bottom:12px;"><p style="color:#00c853; font-size:13px; margin:0;">✅ All split! Press <strong>Start Merging</strong> to put them back in sorted order.</p></div>', unsafe_allow_html=True)
 
-        with left_col:
-            # Left and right lists display
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("<p style='color:#ef4444; font-size:11px; font-weight:bold; text-align:center;'>🔴 LEFT</p>", unsafe_allow_html=True)
-                left_html = '<div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">'
-                for num in left:
-                    left_html += f'<div style="width:40px; height:40px; border-radius:8px; background:#ef4444; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:white;">{num}</div>'
-                left_html += '</div>'
-                st.markdown(left_html, unsafe_allow_html=True)
+                    if st.button("✅ Start Merging!", use_container_width=True):
+                        st.session_state.merge_phase = "merge"
+                        pairs = st.session_state.merge_pairs
+                        if pairs:
+                            first_pair = pairs[0]
+                            left_list = sorted([int(x) for x in list(first_pair[0])])
+                            right_list = sorted([int(x) for x in list(first_pair[1])])
+                            st.session_state.merge_current_left = left_list
+                            st.session_state.merge_current_right = right_list
+                            # Scramble available numbers
+                            combined = left_list + right_list
+                            random.shuffle(combined)
+                            st.session_state.merge_available = combined
+                            st.session_state.merge_player_order = []
+                            st.session_state.merge_code_line = 10
+                            st.session_state.merge_explain = "Pick the smallest number from either list to build the sorted result!"
+                        st.rerun()
 
-            with c2:
-                st.markdown("<p style='color:#3b82f6; font-size:11px; font-weight:bold; text-align:center;'>🔵 RIGHT</p>", unsafe_allow_html=True)
-                right_html = '<div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">'
-                for num in right:
-                    right_html += f'<div style="width:40px; height:40px; border-radius:8px; background:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:white;">{num}</div>'
-                right_html += '</div>'
-                st.markdown(right_html, unsafe_allow_html=True)
+                with right_col:
+                    show_merge_code_panel()
 
-            st.markdown("<br>", unsafe_allow_html=True)
+        # ---- MERGE PHASE ----
+        elif st.session_state.merge_phase == "merge":
+            render_tutorial_merge(level, mode)
+# MERGE SORT: Tutorial/Guided merge phase
+def render_tutorial_merge(level, mode):
+    pair_idx = st.session_state.merge_pair_idx
+    pairs = st.session_state.merge_pairs
+    merged_results = st.session_state.merge_merged_results
 
+    show_split_tree()
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Level complete check
+    if pair_idx >= len(pairs):
+        show_level_complete(level)
+        return
+
+    left = [int(x) for x in list(st.session_state.merge_current_left)]
+    right = [int(x) for x in list(st.session_state.merge_current_right)]
+    player_order = st.session_state.merge_player_order
+    available = [int(x) for x in list(st.session_state.merge_available)]
+
+    st.markdown(f"<p style='text-align:center; color:white; letter-spacing:3px; font-size:11px;'>MERGING PAIR {pair_idx + 1} OF {len(pairs)}</p>", unsafe_allow_html=True)
+
+    left_col, right_col = st.columns(2)
+
+    with left_col:
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("<p style='color:#ef4444; font-size:11px; font-weight:bold; text-align:center;'>🔴 LEFT</p>", unsafe_allow_html=True)
+            left_html = '<div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">'
+            for num in left:
+                left_html += f'<div style="width:40px; height:40px; border-radius:8px; background:#ef4444; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:white;">{num}</div>'
+            left_html += '</div>'
+            st.markdown(left_html, unsafe_allow_html=True)
+        with c2:
+            st.markdown("<p style='color:#3b82f6; font-size:11px; font-weight:bold; text-align:center;'>🔵 RIGHT</p>", unsafe_allow_html=True)
+            right_html = '<div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">'
+            for num in right:
+                right_html += f'<div style="width:40px; height:40px; border-radius:8px; background:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:white;">{num}</div>'
+            right_html += '</div>'
+            st.markdown(right_html, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        if mode == "tutorial":
+            st.markdown('<div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:10px; margin-bottom:10px;"><p style="color:white; font-size:12px; margin:0;">👆 Click <strong>Pick</strong> under the smallest number!</p></div>', unsafe_allow_html=True)
+
+        st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:2px;'>PICK THE SMALLEST:</p>", unsafe_allow_html=True)
+
+        num_cols = min(len(available), 6) if available else 1
+        if available:
+            avail_cols = st.columns(num_cols)
+            for idx, num in enumerate(available):
+                bg = "#ef4444" if num in left else "#3b82f6"
+                with avail_cols[idx % num_cols]:
+                    st.markdown(f'<div style="background:{bg}; border-radius:8px; padding:8px; text-align:center; color:white; font-weight:700; font-size:14px; margin-bottom:4px;">{num}</div>', unsafe_allow_html=True)
+                    if st.button(f"Pick", key=f"pick_{num}_{idx}_{pair_idx}", use_container_width=True):
+                        smallest = min(available)
+                        if num == smallest:
+                            player_order.append(num)
+                            available.remove(num)
+                            st.session_state.merge_player_order = player_order
+                            st.session_state.merge_available = available
+                            st.session_state.merge_code_line = 11
+                            st.session_state.merge_explain = str(num) + " is the smallest — added to the merged list! Keep going."
+
+                            if not available:
+                                # Pair done
+                                st.session_state.merge_merged_results.append(player_order[:])
+                                st.session_state.merge_pairs[pair_idx] = [player_order[:], []]
+                                st.session_state.merge_pair_idx += 1
+                                next_idx = st.session_state.merge_pair_idx
+                                if next_idx < len(pairs):
+                                    next_pair = pairs[next_idx]
+                                    next_left = sorted([int(x) for x in list(next_pair[0])])
+                                    next_right = sorted([int(x) for x in list(next_pair[1])])
+                                    st.session_state.merge_current_left = next_left
+                                    st.session_state.merge_current_right = next_right
+                                    combined = next_left + next_right
+                                    random.shuffle(combined)
+                                    st.session_state.merge_available = combined
+                                    st.session_state.merge_player_order = []
+                                    st.session_state.merge_code_line = 10
+                                    st.session_state.merge_explain = "Great! Now merge the next pair!"
+                        else:
+                            st.session_state.merge_code_line = 11
+                            st.session_state.merge_explain = str(num) + " is not the smallest! Pick the smallest from both lists."
+                            if mode == "guided":
+                                st.session_state.merge_hearts -= 1
+                                st.session_state.merge_penalty += 10
+                                st.session_state.merge_explain += " ❌ -1 heart, +10s!"
+                        st.rerun()
+
+        if player_order:
+            st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:2px; margin-top:10px;'>YOUR MERGED RESULT:</p>", unsafe_allow_html=True)
+            merged_html = '<div style="display:flex; flex-wrap:wrap; gap:4px;">'
+            for num in player_order:
+                merged_html += f'<div style="width:40px; height:40px; border-radius:8px; background:#00c853; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:white;">{num}</div>'
+            merged_html += '</div>'
+            st.markdown(merged_html, unsafe_allow_html=True)
+
+            # Undo only in tutorial mode
             if mode == "tutorial":
-                st.markdown("""
-                    <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:10px; margin-bottom:10px;">
-                        <p style="color:white; font-size:12px; margin:0;">👆 Click <strong>Pick</strong> under the smallest number to add it to your sorted result!</p>
-                    </div>
-                """, unsafe_allow_html=True)
-
-            # Available numbers
-            st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:2px;'>PICK THE SMALLEST:</p>", unsafe_allow_html=True)
-
-            num_cols = min(len(available), 6) if available else 1
-            if available:
-                avail_cols = st.columns(num_cols)
-                for idx, num in enumerate(available):
-                    bg = "#ef4444" if num in left else "#3b82f6"
-                    with avail_cols[idx % num_cols]:
-                        st.markdown(f'<div style="background:{bg}; border-radius:8px; padding:8px; text-align:center; color:white; font-weight:700; font-size:14px; margin-bottom:4px;">{num}</div>', unsafe_allow_html=True)
-                        if st.button(f"Pick", key=f"pick_{num}_{idx}_{pair_idx}", use_container_width=True):
-                            smallest = min(available)
-                            if num == smallest:
-                                # Correct!
-                                player_order.append(num)
-                                available.remove(num)
-                                st.session_state.merge_player_order = player_order
-                                st.session_state.merge_available = available
-                                st.session_state.merge_code_line = 11
-                                st.session_state.merge_explain = str(num) + " is the smallest — added to the merged list! Keep going."
-
-                                # Check if pair done
-                                if not available:
-                                    st.session_state.merge_merged_results.append(player_order[:])
-                                    st.session_state.merge_pairs[pair_idx] = [player_order[:], []]
-                                    st.session_state.merge_pair_idx += 1
-
-                                    next_idx = st.session_state.merge_pair_idx
-                                    if next_idx < len(pairs):
-                                        next_pair = pairs[next_idx]
-                                        next_left = sorted([int(x) for x in list(next_pair[0])])
-                                        next_right = sorted([int(x) for x in list(next_pair[1])])
-                                        st.session_state.merge_current_left = next_left
-                                        st.session_state.merge_current_right = next_right
-                                        st.session_state.merge_current_merged = []
-                                        st.session_state.merge_available = sorted(next_left + next_right)
-                                        st.session_state.merge_player_order = []
-                                        st.session_state.merge_code_line = 10
-                                        st.session_state.merge_explain = "Great! Now merge the next pair. Pick the smallest number again!"
-                            else:
-                                # Wrong pick
-                                st.session_state.merge_code_line = 11
-                                st.session_state.merge_explain = str(num) + " is not the smallest! Look carefully — pick the smallest number from both lists."
-                                if mode in ["semi", "challenge"]:
-                                    st.session_state.merge_hearts -= 1
-                                    st.session_state.merge_penalty += 10
-                                    st.session_state.merge_explain += " — ❌ -1 heart, +10 seconds!"
-                            st.rerun()
-
-            # Show merged result so far
-            if player_order:
-                st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:2px; margin-top:10px;'>YOUR MERGED RESULT:</p>", unsafe_allow_html=True)
-                merged_html = '<div style="display:flex; flex-wrap:wrap; gap:4px;">'
-                for num in player_order:
-                    merged_html += f'<div style="width:40px; height:40px; border-radius:8px; background:#00c853; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:white;">{num}</div>'
-                merged_html += '</div>'
-                st.markdown(merged_html, unsafe_allow_html=True)
-
                 if st.button("↩ Undo", use_container_width=True):
                     last = player_order.pop()
                     available.append(last)
@@ -767,25 +754,128 @@ def render_merge_game():
                     st.session_state.merge_available = available
                     st.rerun()
 
-        with right_col:
-            if mode in ["tutorial", "semi"]:
-                show_merge_code_panel()
-            else:
-                st.markdown("""
-                    <div style="background:rgba(255,255,255,0.08); border-radius:14px; padding:16px;">
-                        <p style="color:#ffd000; font-size:13px; font-weight:bold; margin:0 0 8px;">🔥 Challenge Mode</p>
-                        <p style="color:white; font-size:12px; margin:4px 0;">No hints — you know the algorithm!</p>
-                        <p style="color:white; font-size:12px; margin:4px 0;">Pick the smallest number each time.</p>
-                        <p style="color:rgba(255,255,255,0.5); font-size:11px; margin:10px 0 0;">Wrong pick = ❤️ lost + ⏱ +10s</p>
-                    </div>
-                """, unsafe_allow_html=True)
+    with right_col:
+        show_merge_code_panel()
+# MERGE SORT: Challenge merge phase
+def render_challenge_merge(level):
+    pair_idx = st.session_state.merge_pair_idx
+    pairs = st.session_state.merge_pairs
 
+    # Level complete check
+    if pair_idx >= len(pairs):
+        show_level_complete(level)
+        return
 
-# ================================================================
+    left = [int(x) for x in list(st.session_state.merge_current_left)]
+    right = [int(x) for x in list(st.session_state.merge_current_right)]
+    player_order = st.session_state.merge_player_order
+    available = [int(x) for x in list(st.session_state.merge_available)]
+
+    st.markdown(f"<p style='text-align:center; color:white; letter-spacing:3px; font-size:11px;'>MERGING PAIR {pair_idx + 1} OF {len(pairs)}</p>", unsafe_allow_html=True)
+
+    # Challenge: numbers shown scrambled, no color hints for which list they're from
+    st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:2px; text-align:center;'>PICK THE SMALLEST NUMBER TO MERGE:</p>", unsafe_allow_html=True)
+
+    num_cols = min(len(available), 8) if available else 1
+    if available:
+        avail_cols = st.columns(num_cols)
+        for idx, num in enumerate(available):
+            with avail_cols[idx % num_cols]:
+                # No color hint in challenge mode — all same color
+                st.markdown(f'<div style="background:#7850ff; border-radius:8px; padding:8px; text-align:center; color:white; font-weight:700; font-size:14px; margin-bottom:4px;">{num}</div>', unsafe_allow_html=True)
+                if st.button(f"Pick", key=f"cpick_{num}_{idx}_{pair_idx}", use_container_width=True):
+                    smallest = min(available)
+                    if num == smallest:
+                        player_order.append(num)
+                        available.remove(num)
+                        st.session_state.merge_player_order = player_order
+                        st.session_state.merge_available = available
+
+                        if not available:
+                            # Pair done
+                            st.session_state.merge_merged_results.append(player_order[:])
+                            st.session_state.merge_pairs[pair_idx] = [player_order[:], []]
+                            st.session_state.merge_pair_idx += 1
+                            next_idx = st.session_state.merge_pair_idx
+                            if next_idx < len(pairs):
+                                next_pair = pairs[next_idx]
+                                next_left = [int(x) for x in list(next_pair[0])]
+                                next_right = [int(x) for x in list(next_pair[1])]
+                                st.session_state.merge_current_left = next_left
+                                st.session_state.merge_current_right = next_right
+                                combined = next_left + next_right
+                                random.shuffle(combined)
+                                st.session_state.merge_available = combined
+                                st.session_state.merge_player_order = []
+                    else:
+                        # Wrong — lose heart, add penalty
+                        st.session_state.merge_hearts -= 1
+                        st.session_state.merge_penalty += 10
+                    st.rerun()
+
+    if player_order:
+        st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:2px; margin-top:10px; text-align:center;'>YOUR MERGED RESULT:</p>", unsafe_allow_html=True)
+        merged_html = '<div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">'
+        for num in player_order:
+            merged_html += f'<div style="width:40px; height:40px; border-radius:8px; background:#00c853; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:white;">{num}</div>'
+        merged_html += '</div>'
+        st.markdown(merged_html, unsafe_allow_html=True)
+        
+        # No undo in challenge mode!
+# merge sort level complete
+
+def show_level_complete(level):
+    total_seconds = get_merge_time()
+    total_time = format_time(total_seconds)
+
+    # Save personal best
+    existing_best = st.session_state.merge_personal_best.get(level)
+    is_new_best = False
+    if existing_best is None or total_seconds < existing_best:
+        st.session_state.merge_personal_best[level] = total_seconds
+        is_new_best = True
+
+    if level not in st.session_state.merge_completed:
+        st.session_state.merge_completed.append(level)
+    next_level = level + 1
+    if next_level <= 10 and next_level not in st.session_state.merge_unlocked:
+        st.session_state.merge_unlocked.append(next_level)
+
+    if level == 10:
+        st.markdown(f"""
+            <div style="background:rgba(255,208,0,0.2); border:2px solid #ffd000; border-radius:14px; padding:30px; text-align:center; margin:20px 0;">
+                <p style="color:#ffd000; font-size:36px; font-weight:800; margin:0;">🏆 MERGE SORT MASTER!</p>
+                <p style="color:white; font-size:16px; margin:8px 0 0;">You completed all 10 levels!</p>
+                <p style="color:#ffd000; font-size:20px; font-weight:700; margin:8px 0 0;">Time: {total_time}</p>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        new_best_text = "🌟 New Personal Best!" if is_new_best else ""
+        st.markdown(f"""
+            <div style="background:rgba(0,200,83,0.2); border:2px solid #00c853; border-radius:14px; padding:24px; text-align:center; margin:20px 0;">
+                <p style="color:#00c853; font-size:28px; font-weight:800; margin:0;">🎉 Level {level} Complete!</p>
+                <p style="color:#ffd000; font-size:22px; font-weight:700; margin:8px 0;">⏱ {total_time}</p>
+                <p style="color:white; font-size:13px; margin:4px 0;">{new_best_text}</p>
+                <p style="color:rgba(255,255,255,0.6); font-size:13px; margin:4px 0;">Level {level + 1} unlocked!</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("🔄 Try Again", use_container_width=True):
+            reset_merge_level(level)
+            st.rerun()
+    with col2:
+        if level < 10:
+            if st.button(f"➡ Level {level + 1}", use_container_width=True):
+                st.session_state.merge_level = level + 1
+                reset_merge_level(level + 1)
+                st.rerun()
+    with col3:
+        if st.button("🏠 Levels", use_container_width=True):
+            go_to_page("merge")
 # BUBBLE SORT: Main game
-# ================================================================
 def show_bubble_game(level):
-
     if "nums" not in st.session_state:
         st.session_state.nums = make_numbers(level)
         st.session_state.index = 0
@@ -824,10 +914,7 @@ def show_bubble_game(level):
 
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                user_seconds = st.number_input(
-                    "Seconds", min_value=10, max_value=600,
-                    value=60, step=5, label_visibility="collapsed"
-                )
+                user_seconds = st.number_input("Seconds", min_value=10, max_value=600, value=60, step=5, label_visibility="collapsed")
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button("🚀 Start Timer", use_container_width=True):
                     st.session_state.timer_limit = user_seconds
@@ -850,7 +937,6 @@ def show_bubble_game(level):
         if st.session_state.game_over == None:
             if st.session_state.nums == sorted(st.session_state.nums):
                 st.session_state.game_over = "win"
-
         if st.session_state.game_over == None:
             if time_left <= 0:
                 st.session_state.game_over = "timeout"
@@ -865,7 +951,6 @@ def show_bubble_game(level):
                 </div>
             </div>
             """, unsafe_allow_html=True)
-
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("🔄 Try Again", use_container_width=True):
@@ -888,14 +973,10 @@ def show_bubble_game(level):
             st.markdown(f"""
             <div style="text-align:center; padding:40px 20px;">
                 <h1 style="color:#ffd000; font-size:52px; font-weight:900; margin:0 0 16px;">You sorted it! 🎉</h1>
-                <p style="color:white; font-size:22px; margin:0 0 8px;">
-                    Completed in <span style="color:#ffd000; font-weight:700;">{time_taken} seconds</span>
-                    out of <span style="color:#ffd000; font-weight:700;">{time_limit}</span>!
-                </p>
-                <p style="color:rgba(255,255,255,0.6); font-size:16px;">Hard mode conquered — well done!</p>
+                <p style="color:white; font-size:22px; margin:0 0 8px;">Completed in <span style="color:#ffd000; font-weight:700;">{time_taken}s</span> out of <span style="color:#ffd000; font-weight:700;">{time_limit}s</span>!</p>
+                <p style="color:rgba(255,255,255,0.6); font-size:16px;">Hard mode conquered!</p>
             </div>
             """, unsafe_allow_html=True)
-
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("🔄 Play Again", use_container_width=True):
@@ -976,7 +1057,6 @@ def show_bubble_game(level):
         st.markdown(cards_html, unsafe_allow_html=True)
 
         swap_col, next_col = st.columns(2)
-
         with swap_col:
             if st.button("🔀 SWAP"):
                 if i < len(nums) - 1:
@@ -1011,7 +1091,6 @@ def show_bubble_game(level):
         st.markdown("<p style='color:rgba(255,255,255,0.6); font-size:10px; letter-spacing:3px; text-align:center;'>THE CODE</p>", unsafe_allow_html=True)
 
         active_line = st.session_state.code_line
-
         all_lines = [
             "def bubble_sort(arr):",
             "&nbsp;&nbsp;for i in range(len(arr)):",
@@ -1034,31 +1113,19 @@ def show_bubble_game(level):
             line_number = line_number + 1
 
         st.markdown('<div style="background:#1a1a2e; border-radius:14px; padding:16px; font-family:monospace; font-size:13px; line-height:2;">' + code_html + '</div>', unsafe_allow_html=True)
-
         st.markdown('<div style="margin-top:12px; background:rgba(255,208,0,0.85); border-left:3px solid #ffd000; border-radius:0 10px 10px 0; padding:10px 14px; color:black; font-size:13px; line-height:1.6;">💡 ' + st.session_state.explain + '</div>', unsafe_allow_html=True)
 
     if level == "hard":
         if st.session_state.game_over == None:
             time.sleep(1)
             st.rerun()
-
-
-# ================================================================
 # HOME PAGE
-# ================================================================
-if st.session_state.page == "home":
 
+if st.session_state.page == "home":
     st.markdown("""
     <style>
         .stApp {
-            background: linear-gradient(
-                135deg,
-                #0d0010 0%,
-                #5a0080 25%,
-                #c0003c 50%,
-                #ff6600 75%,
-                #ffd000 100%
-            );
+            background: linear-gradient(135deg, #0d0010 0%, #5a0080 25%, #c0003c 50%, #ff6600 75%, #ffd000 100%);
         }
         img {
             background-color: black;
@@ -1076,9 +1143,7 @@ if st.session_state.page == "home":
             color: #1a0000;
             border: none;
         }
-        div.stButton > button:hover {
-            background-color: #ff3a3a;
-        }
+        div.stButton > button:hover { background-color: #ff3a3a; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1098,55 +1163,16 @@ if st.session_state.page == "home":
     with col2:
         if st.button("MERGE SORT"):
             go_to_page("merge")
-
-
-# ================================================================
-# BUBBLE SORT PAGE (difficulty selection)
-# ================================================================
+# BUBBLE SORT PAGE
 elif st.session_state.page == "bubble":
-
     st.markdown("""
     <style>
-        .stApp {
-            background: linear-gradient(
-                135deg,
-                #0d0010 0%,
-                #5a0080 25%,
-                #c0003c 50%,
-                #ff6600 75%,
-                #ffd000 100%
-            );
-        }
-        div.stButton > button {
-            width: 100%;
-            height: 50px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 10px;
-            border: none;
-        }
-        div.stButton:has(button[kind="secondary"]) > button {
-            width: auto;
-            height: 36px;
-            font-size: 13px;
-            background: rgba(255,255,255,0.15);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 20px;
-            padding: 0 16px;
-        }
-        div[data-testid="column"]:nth-child(1) div.stButton > button {
-            background: #00c853;
-            color: #003300;
-        }
-        div[data-testid="column"]:nth-child(2) div.stButton > button {
-            background: #ff9800;
-            color: #3d1f00;
-        }
-        div[data-testid="column"]:nth-child(3) div.stButton > button {
-            background: #ff2020;
-            color: #1a0000;
-        }
+        .stApp { background: linear-gradient(135deg, #0d0010 0%, #5a0080 25%, #c0003c 50%, #ff6600 75%, #ffd000 100%); }
+        div.stButton > button { width: 100%; height: 50px; font-size: 16px; font-weight: bold; border-radius: 10px; border: none; }
+        div.stButton:has(button[kind="secondary"]) > button { width: auto; height: 36px; font-size: 13px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 20px; padding: 0 16px; }
+        div[data-testid="column"]:nth-child(1) div.stButton > button { background: #00c853; color: #003300; }
+        div[data-testid="column"]:nth-child(2) div.stButton > button { background: #ff9800; color: #3d1f00; }
+        div[data-testid="column"]:nth-child(3) div.stButton > button { background: #ff2020; color: #1a0000; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1158,26 +1184,11 @@ elif st.session_state.page == "bubble":
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown("""
-            <div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;">
-                <p style="color:#ffd000; font-size:22px; font-weight:bold;">1</p>
-                <p style="color:white; font-size:12px;">Choose a difficulty level</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;"><p style="color:#ffd000; font-size:22px; font-weight:bold;">1</p><p style="color:white; font-size:12px;">Choose a difficulty level</p></div>', unsafe_allow_html=True)
     with col2:
-        st.markdown("""
-            <div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;">
-                <p style="color:#ffd000; font-size:22px; font-weight:bold;">2</p>
-                <p style="color:white; font-size:12px;">Click Generate Numbers to start</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;"><p style="color:#ffd000; font-size:22px; font-weight:bold;">2</p><p style="color:white; font-size:12px;">Click Generate Numbers to start</p></div>', unsafe_allow_html=True)
     with col3:
-        st.markdown("""
-            <div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;">
-                <p style="color:#ffd000; font-size:22px; font-weight:bold;">3</p>
-                <p style="color:white; font-size:12px;">Use Swap and Next to sort!</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="background:rgba(255,255,255,0.12); border-radius:14px; padding:16px; text-align:center;"><p style="color:#ffd000; font-size:22px; font-weight:bold;">3</p><p style="color:white; font-size:12px;">Use Swap and Next to sort!</p></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center; color:white; letter-spacing:3px;'>SELECT YOUR DIFFICULTY</p>", unsafe_allow_html=True)
@@ -1192,11 +1203,7 @@ elif st.session_state.page == "bubble":
     with col3:
         if st.button("HARD"):
             go_to_page("bubble_hard")
-
-
-# ================================================================
 # BUBBLE SORT LEVELS
-# ================================================================
 elif st.session_state.page == "bubble_easy":
     show_bubble_game("easy")
 
@@ -1205,16 +1212,13 @@ elif st.session_state.page == "bubble_medium":
 
 elif st.session_state.page == "bubble_hard":
     show_bubble_game("hard")
-
-
-# ================================================================
 # MERGE SORT PAGES
-# ================================================================
 elif st.session_state.page == "merge":
     render_merge_home()
 
 elif st.session_state.page == "merge_game":
     render_merge_game()
+        
 
     
 
