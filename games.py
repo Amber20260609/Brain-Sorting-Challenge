@@ -279,7 +279,7 @@ def show_bubble_game(level):
             <p style="font-size:48px; margin:0;">⏱</p>
             <h2 style="color:#ffd000; font-size:32px; font-weight:800; margin:8px 0 4px;">Set Your Timer</h2>
             <p style="color:rgba(255,255,255,0.7); font-size:16px; margin:0 0 8px;">How many seconds do you want to sort in?</p>
-            <p style="color:rgba(255,100,100,0.9); font-size:13px; margin:0 0 24px;">⚠️ Maximum: 120 seconds (under 2 minutes)</p>
+            <p style="color:rgba(255,100,100,0.9); font-size:14px; margin:0 0 24px;">⚠️ Maximum: 120 seconds (under 2 minutes)</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -294,7 +294,7 @@ def show_bubble_game(level):
                 label_visibility="collapsed"
             )
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("COUNT DOWN", use_container_width=True):
+            if st.button("START TIMER", use_container_width=True):
                 st.session_state.timer_limit = user_seconds
                 st.session_state.timer_start = time.time()
                 st.session_state.timer_set = True
@@ -406,7 +406,7 @@ def show_bubble_game(level):
             <p style="font-size:48px; margin:0;">⏱</p>
             <h2 style="color:#ffd000; font-size:32px; font-weight:800; margin:8px 0 4px;">Set Your Timer</h2>
             <p style="color:rgba(255,255,255,0.7); font-size:16px; margin:0 0 8px;">How many seconds do you want to sort in?</p>
-            <p style="color:rgba(255,200,100,0.9); font-size:13px; margin:0 0 24px;">⚠️ Maximum: 120 seconds (under 2 minutes)</p>
+            <p style="color:rgba(255,200,100,0.9); font-size:14px; margin:0 0 24px;">⚠️ Maximum: 120 seconds (under 2 minutes)</p>
         </div>
         """, unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -420,7 +420,7 @@ def show_bubble_game(level):
                 label_visibility="collapsed"
             )
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🚀 Start Timer", use_container_width=True):
+            if st.button("START TIMER", use_container_width=True):
                 st.session_state.medium_timer_limit = user_seconds
                 st.session_state.medium_timer_start = time.time()
                 st.session_state.medium_timer_set = True
