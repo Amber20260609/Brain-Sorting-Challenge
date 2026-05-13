@@ -1400,9 +1400,9 @@ elif st.session_state.page == "bubble":
     st.markdown("""
         <div style="background:rgba(255,255,255,0.08); border-radius:14px; padding:16px; margin-bottom:20px;">
             <p style="color:#ffd000; font-size:15px; font-weight:bold; margin:0 0 10px;">📋 Mode Guide</p>
-            <p style="color:white; font-size:13px; margin:6px 0;">🟢 <strong>Easy</strong> — Educational mode. See the code, learn the algorithm, understand complexity. Best for beginners!</p>
-            <p style="color:white; font-size:13px; margin:6px 0;">🟠 <strong>Medium</strong> — Gameplay focus with a stopwatch. How fast can you sort?</p>
-            <p style="color:white; font-size:13px; margin:6px 0;">🔴 <strong>Hard</strong> — Pure challenge. Set your own countdown (max 119s). Race against time!</p>
+            <p style="color:white; font-size:14px; margin:6px 0;">🟢 <strong>Easy</strong> — Educational mode. See the code, learn the algorithm, understand complexity. Best for beginners!</p>
+            <p style="color:white; font-size:14px; margin:6px 0;">🟠 <strong>Medium</strong> — Gameplay. How fast can you sort? set your own countdown(max 120s)</p>
+            <p style="color:white; font-size:14px; margin:6px 0;">🔴 <strong>Hard</strong> — Pure challenge. Set your own countdown (max 120s). Race against time!</p>
         </div>
     """, unsafe_allow_html=True)
 
