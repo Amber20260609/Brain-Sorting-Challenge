@@ -120,7 +120,7 @@ def make_numbers(level):
                 numbers[i] = numbers[j]
                 numbers[j] = temp
     if level == "hard":
-        numbers = random.sample(range(1, 40), 20)
+        numbers = random.sample(range(1, 40), 24)
         random.shuffle(numbers)
         count = 0
         while count < len(numbers):
@@ -171,7 +171,7 @@ def show_easy_code_and_complexity():
 
     # Complexity section
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown('<p style="color:rgba(255,255,255,0.55); font-size:10px; letter-spacing:3px; text-align:center; margin-bottom:8px;">COMPLEXITY</p>', unsafe_allow_html=True)
+    st.markdown('<p style="color:rgba(255,255,255,0.55); font-size:11px; letter-spacing:3px; text-align:center; margin-bottom:8px;">COMPLEXITY</p>', unsafe_allow_html=True)
     st.markdown("""
         <div style="background:#0d0d1a; border:1px solid rgba(120,80,255,0.3); border-radius:14px; padding:16px 18px; font-size:13px;">
             <p style="color:#c084ff; font-weight:700; font-size:12px; letter-spacing:2px; margin:0 0 10px;">⏱ TIME COMPLEXITY</p>
@@ -191,7 +191,7 @@ def show_easy_code_and_complexity():
             </div>
             <p style="color:#c084ff; font-weight:700; font-size:12px; letter-spacing:2px; margin:0 0 10px;">💾 SPACE COMPLEXITY</p>
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="color:rgba(255,255,255,0.6); font-size:12px;">Auxiliary Space</span>
+                <span style="color:rgba(255,255,255,0.6); font-size:12px;">Space</span>
                 <span style="background:rgba(56,189,248,0.2); color:#38bdf8; font-family:monospace; font-size:12px; font-weight:700; padding:2px 10px; border-radius:6px; border:1px solid rgba(56,189,248,0.3);">O(1)</span>
             </div>
             <p style="color:rgba(255,255,255,0.4); font-size:11px; margin:8px 0 0; font-style:italic;">Sorts in-place — no extra memory needed.</p>
@@ -288,7 +288,7 @@ def show_bubble_game(level):
             user_seconds = st.number_input(
                 "Seconds",
                 min_value=10,
-                max_value=119,
+                max_value=120,
                 value=60,
                 step=5,
                 label_visibility="collapsed"
